@@ -29,7 +29,7 @@ CREATE TABLE doctors(
 );
 
 CREATE TABLE medical_records(
-    record_id int PRIMARY KEY ,
+    record_id int PRIMARY KEY,
     patient_id int,
     admission_date date,
     discharge_date date,
@@ -331,4 +331,101 @@ GROUP BY year, month
 ORDER BY year, month;
 
 -- list of patients who have been admitted to hospital for more than once in last year
--- q.33
+SELECT p.patient_id,
+       p.patient_name,
+       COUNT(*) as admisssion
+FROM medical_records
+INNER JOIN patients p on medical_records.patient_id = p.patient_id
+WHERE medical_records.admission_date >= DATE_SUB(CURRENT_DATE, INTERVAL 1 YEAR)
+GROUP BY p.patient_id, p.patient_name
+HAVING COUNT(*) > 1;
+
+-- total hospital charges exceed threshold
+/*
+We don't have the charges attribute to the data. Let's add a new attribute to the medical_records
+*/
+
+ALTER TABLE medical_records
+ADD charges int;
+INSERT INTO medical_records (charges) VALUES(34);
+
+ALTER TABLE medical_records
+MODIFY record_id int DEFAULT 0;
+
+
+SELECT medical_records.charges
+FROM medical_records;
+-- the first entry has now 34 in it. cool. Now we can enter all the data
+-- let's delete the charges column first
+ALTER TABLE medical_records
+DROP charges;
+
+-- creating a new table and join with medical_records and then update medical_records table
+CREATE TABLE medical_charges(
+    id int DEFAULT 0,
+    charges int PRIMARY KEY);
+INSERT INTO medical_charges (id, charges) VALUES
+        (101, 78),
+        (102, 76),
+        (103, 98),
+        (104, 109),
+        (105, 89),
+        (106, 70),
+        (107, 71),
+        (108, 197),
+        (109, 69),
+        (110, 62),
+        (111, 81),
+        (112, 44),
+        (113, 132),
+        (114, 22),
+        (115, 103),
+        (116, 161),
+        (117, 121),
+        (118, 138),
+        (119, 191),
+        (120, 211),
+        (121, 101),
+        (122, 34),
+        (123, 208),
+        (124, 87),
+        (125, 65),
+        (126, 120),
+        (127, 85),
+        (128, 45);
+
+-- check data entry (works)
+SELECT *
+FROM medical_charges
+WHERE charges = 87;
+
+-- add charges column to medical_records table
+ALTER TABLE medical_records ADD COLUMN charges int DEFAULT 0;
+
+UPDATE medical_records
+INNER JOIN medical_charges on medical_records.record_id = medical_charges.id
+SET medical_records.charges = medical_charges.charges;
+
+-- query to see if column values were added (works) :) we didn't have to add data manually.
+SELECT *
+FROM medical_records
+WHERE charges = 120;
+
+SELECT patients.patient_name, SUM(medical_records.charges) as med_charges
+FROM medical_records
+JOIN patients on medical_records.patient_id = patients.patient_id
+GROUP BY patients.patient_name
+HAVING med_charges >= 100;
+
+-- percentage change in no. of patients admitted each month compared to the previous
+SELECT
+    YEAR(admission_date) AS year,
+    MONTH(admission_date) AS month,
+    COUNT(*) AS admissions,
+    ((COUNT(*) - LAG(COUNT(*), 1, 0) OVER (ORDER BY YEAR(admission_date), MONTH(admission_date))) * 100.0) / LAG(COUNT(*), 1, 1) OVER (ORDER BY YEAR(admission_date), MONTH(admission_date)) AS percentage_change
+FROM
+    medical_records
+WHERE
+    admission_date >= DATE_SUB(CURRENT_DATE, INTERVAL 1 YEAR)
+GROUP BY
+    YEAR(admission_date), MONTH(admission_date);
