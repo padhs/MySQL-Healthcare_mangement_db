@@ -182,15 +182,75 @@ FROM patients;
 -- docs who treated patients admitted in Jan 2023
 SELECT DISTINCT doctors.*
 FROM doctors
-INNER JOIN medical_records mr on doctors.doctor_id = mr.doctor_id
+INNER JOIN medical_records mr ON doctors.doctor_id = mr.doctor_id
 WHERE mr.admission_date BETWEEN '2023-01-01' AND '2023-01-31';
 
 -- total no. of patients treated by each doc
 SELECT DISTINCT doctors.doctor_name, COUNT(*) AS patient_list
 FROM doctors
-INNER JOIN medical_records on doctors.doctor_id = medical_records.doctor_id
+INNER JOIN medical_records ON doctors.doctor_id = medical_records.doctor_id
 GROUP BY doctors.doctor_name;
 
-SELECT medical_records.doctor_id, COUNT(*) AS patient_list
+-- list patients treated by doctor specialized in cardiology
+SELECT patients.patient_name, doctors.doctor_name
+FROM patients
+INNER JOIN medical_records ON patients.patient_id = medical_records.patient_id
+INNER JOIN doctors ON medical_records.doctor_id = doctors.doctor_id
+WHERE doctors.specialization = 'Cardiology';
+
+-- patient with longest hospital stay duration
+SELECT patients.patient_name
+FROM patients
+INNER JOIN medical_records mr ON patients.patient_id = mr.patient_id
+ORDER BY DATEDIFF(mr.discharge_date, mr.admission_date) DESC
+LIMIT 1;
+
+-- top 5 most common diagnoses (all records refer to different diagnoses. From analysis POV this step is not required)
+SELECT medical_records.diagnosis, COUNT(*) AS diagnosis_count
 FROM medical_records
-GROUP BY medical_records.doctor_id;
+GROUP BY medical_records.diagnosis
+ORDER BY diagnosis_count DESC
+LIMIT 5;
+
+-- patients treated by doc with names starting with 'Dr. S'
+SELECT patients.patient_id, patients.patient_name, doctors.doctor_name, doctors.doctor_id
+FROM patients
+JOIN medical_records ON patients.patient_id = medical_records.patient_id
+RIGHT OUTER JOIN doctors ON medical_records.doctor_id = doctors.doctor_id
+-- INNER JOIN doctors ON medical_records.doctor_id = doctors.doctor_id
+-- because of right outer join we can see null values for doc_id 209 & 218. they have no data in medical_records.
+-- inner joins would only result in Dr. Sarah Jones
+WHERE doctors.doctor_name LIKE 'Dr. S%';
+
+-- % male & female patients
+SELECT patients.gender, COUNT(*)*100/(
+    SELECT COUNT(*) FROM patients)
+FROM patients
+GROUP BY patients.gender;
+
+-- patient with highest no. of medical entries (all records are distinct)
+SELECT patients.patient_name, COUNT(*) as record_count
+FROM patients
+INNER JOIN medical_records on patients.patient_id = medical_records.patient_id
+GROUP BY patients.patient_name
+ORDER BY record_count DESC
+-- this will return the first patient name as all records are distinct no repeated medical entries of any patients
+LIMIT 1;
+
+-- top 3 docs who treated most no. of patients
+SELECT doctors.doctor_name, COUNT(*) as patient_count
+FROM doctors
+INNER JOIN medical_records on doctors.doctor_id = medical_records.doctor_id
+ORDER BY patient_count DESC
+LIMIT 3;
+
+-- average duration of hospital stay for each diagnosis(distinct)
+SELECT medical_records.diagnosis, AVG(DATEDIFF(medical_records.discharge_date, medical_records.admission_date))
+FROM medical_records
+GROUP BY medical_records.diagnosis;
+
+-- rank patients based on no. of medical records from highest to lowest(no use all patient_id have only 1 record entry)
+SELECT patient_id, COUNT(*) med_entries, RANK() OVER (ORDER BY COUNT(*) DESC) as med_entry_rank
+FROM medical_records
+GROUP BY patient_id;
+
