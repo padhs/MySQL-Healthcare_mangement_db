@@ -110,4 +110,87 @@ INSERT INTO medical_records (record_id, patient_id, admission_date, discharge_da
 
 -- check to see if data successfully entered in table
 SELECT *
-FROM health_care_db_management.doctors
+FROM health_care_db_management.doctors;
+
+-- names, gender of all patients:
+SELECT patients.patient_name, patients.gender
+FROM patients;
+
+-- unique diagnoses
+SELECT DISTINCT medical_records.diagnosis
+FROM medical_records;
+
+-- total number of patients
+SELECT COUNT(patients.patient_id)
+FROM patients;
+
+-- oldest patient
+SELECT patients.date_of_birth
+FROM patients
+ORDER BY patients.date_of_birth
+LIMIT 1;
+
+-- find addess & contact of patient_id = 7
+SELECT patients.address, patients.contact
+FROM patients
+WHERE patient_id = 7;
+
+-- about doctors
+SELECT doctors.doctor_name, doctors.specialization
+FROM doctors;
+
+-- average duration of hospital stay
+SELECT AVG(DATEDIFF(medical_records.discharge_date, medical_records.admission_date)) AS avg_duration
+FROM medical_records;
+
+-- count males and females (group by)
+SELECT patients.gender, COUNT(*) AS gender_count
+FROM patients
+GROUP BY patients.gender;
+
+-- doc who treated most no. of patients
+SELECT medical_records.doctor_id, COUNT(*) AS patients_treated
+FROM medical_records
+GROUP BY medical_records.doctor_id
+ORDER BY patients_treated DESC;
+
+-- all patients who have names in 'J'--> (wildcards)
+SELECT patients.patient_name
+FROM patients
+WHERE patient_name LIKE 'J%';
+
+-- patient name with admission & discharge date
+SELECT patients.patient_name, medical_records.admission_date, medical_records.discharge_date
+FROM patients
+INNER JOIN medical_records ON patients.patient_id = medical_records.patient_id;
+
+-- total no. of medical records
+SELECT COUNT(*) AS med_records
+FROM medical_records;
+
+-- patients diagnosed with diabetes or hypertension
+SELECT patients.patient_id, patients.patient_name, medical_records.diagnosis
+FROM patients
+INNER JOIN medical_records ON patients.patient_id = medical_records.patient_id
+-- another way: WHERE medical_records.diagnosis IN ("Hypertension", "Diabetes");
+WHERE medical_records.diagnosis = 'Hypertension' OR 'Diabetes';
+
+-- average age of patients
+SELECT AVG(YEAR(CURRENT_DATE) - YEAR(patients.date_of_birth)) AS avg_age, patients.patient_name
+FROM patients;
+
+-- docs who treated patients admitted in Jan 2023
+SELECT DISTINCT doctors.*
+FROM doctors
+INNER JOIN medical_records mr on doctors.doctor_id = mr.doctor_id
+WHERE mr.admission_date BETWEEN '2023-01-01' AND '2023-01-31';
+
+-- total no. of patients treated by each doc
+SELECT DISTINCT doctors.doctor_name, COUNT(*) AS patient_list
+FROM doctors
+INNER JOIN medical_records on doctors.doctor_id = medical_records.doctor_id
+GROUP BY doctors.doctor_name;
+
+SELECT medical_records.doctor_id, COUNT(*) AS patient_list
+FROM medical_records
+GROUP BY medical_records.doctor_id;
