@@ -320,4 +320,15 @@ AND DATEDIFF(m1.admission_date, m2.discharge_date) <= 30
 JOIN patients p on m1.patient_id = p.patient_id
 ORDER BY m1.patient_id, m1.admission_date;
 
--- 
+-- avg duration of hospital stay by month
+SELECT
+    YEAR(medical_records.admission_date) as year,
+    MONTH(medical_records.admission_date) as month,
+    AVG(DATEDIFF(medical_records.discharge_date, medical_records.admission_date)) AS avg_duration_stay
+FROM medical_records
+WHERE admission_date >= DATE_SUB(CURRENT_DATE, INTERVAL 1 YEAR)
+GROUP BY year, month
+ORDER BY year, month;
+
+-- list of patients who have been admitted to hospital for more than once in last year
+-- q.33
