@@ -254,3 +254,70 @@ SELECT patient_id, COUNT(*) med_entries, RANK() OVER (ORDER BY COUNT(*) DESC) as
 FROM medical_records
 GROUP BY patient_id;
 
+-- patient who spent most time in hospital
+SELECT patients.patient_name, DATEDIFF(medical_records.discharge_date, medical_records.admission_date) as duration
+FROM patients
+INNER JOIN medical_records ON patients.patient_id = medical_records.patient_id
+ORDER BY duration DESC
+LIMIT 1;
+
+-- patient list of docs specialized in cardiology or pulmonology
+SELECT doctors.doctor_name, doctors.specialization, patients.patient_name
+FROM patients
+INNER JOIN medical_records on patients.patient_id = medical_records.patient_id
+RIGHT JOIN doctors on medical_records.doctor_id = doctors.doctor_id
+-- we can see docs who don't have a patient list in the medical record (maybe they're interns ?)
+WHERE doctors.specialization IN ('Cardiology', 'Pulmonology');
+
+-- doc who treated the most no. of diabetes patients
+SELECT doctors.doctor_name, COUNT(*) AS diabetes_patient
+FROM doctors
+INNER JOIN medical_records on doctors.doctor_id = medical_records.doctor_id
+WHERE medical_records.diagnosis = 'Diabetes'
+GROUP BY doctors.doctor_name
+ORDER BY diabetes_patient DESC
+LIMIT 1;
+
+-- total no. of patients treated by each doc
+SELECT doctors.doctor_name, COUNT(medical_records.patient_id) as patient_count
+FROM doctors
+LEFT OUTER JOIN medical_records on doctors.doctor_id = medical_records.doctor_id
+GROUP BY doctors.doctor_name
+ORDER BY patient_count DESC;
+
+-- patients who were readmitted within 30 days:
+/*
+Since there is no repetition in the patient_id in the medical_record table, no patient was readmitted within 30 days or discharge.
+So, let's add some new data to the medical_record table
+Note: this will affect our initial analysis as the dimension & scope of analysis changes due to addition of new data.
+*/
+
+-- new data:
+INSERT INTO medical_records (record_id, patient_id, admission_date, discharge_date, diagnosis, treatment, doctor_id) VALUES
+    (121, 1, '2024-01-15', '2024-01-20', 'Pneumonia', 'Antibiotics', 201),
+    (122, 1, '2024-02-10', '2024-02-15', 'Pneumonia', 'Antibiotics', 201),
+    (123, 2, '2024-03-20', '2024-03-25', 'Diabetes', 'Insulin therapy', 202),
+    (124, 2, '2024-04-12', '2024-04-15', 'Diabetes', 'Insulin therapy', 202),
+    (125, 3, '2024-05-08', '2024-05-15', 'Asthma', 'Bronchodilators', 202),
+    (126, 3, '2024-06-18', '2024-06-20', 'Asthma', 'Bronchodilators', 202),
+    (127, 4, '2024-07-03', '2024-07-10', 'Migraine', 'Triptans', 203),
+    (128, 4, '2024-07-25', '2024-07-30', 'Migraine', 'Triptans', 203);
+
+-- query table to check if data added successfully
+SELECT *
+FROM medical_records
+WHERE record_id = 127;
+
+SELECT m1.patient_id,
+       p.patient_name,
+       m1.admission_date as readmission_date,
+       m1.discharge_date as readmission_discharge_date,
+       m2.admission_date as previous_admission_date
+FROM medical_records m1
+INNER JOIN medical_records m2 on m1.patient_id = m2.patient_id
+AND m1.admission_date > m2.discharge_date
+AND DATEDIFF(m1.admission_date, m2.discharge_date) <= 30
+JOIN patients p on m1.patient_id = p.patient_id
+ORDER BY m1.patient_id, m1.admission_date;
+
+-- 
